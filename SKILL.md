@@ -2,10 +2,15 @@
 name: low-altitude-guardian
 description: Low-altitude unmanned device emergency crisis response system. Provides real-time situation awareness, crisis classification, optimal minimum-loss avoidance decision-making (human safety > public property > device safety), solution matching from knowledge base, and incident reporting with continuous self-iteration capability. Designed for UAVs, drones, and autonomous devices operating in low-altitude economy scenarios.
 user-invocable: true
-metadata: {"openclaw":{"requires":{"anyBins":["python3","python"]},"stage":"alpha","version":"0.1.0"}}
+metadata: {"openclaw":{"requires":{"anyBins":["python3","python"]},"stage":"alpha","version":"0.2.0"}}
 ---
 
-本技能包为低空经济场景下的无人设备（无人机、eVTOL、无人配送车等）提供突发危机应急响应能力。通过 **感知 → 记录 → 分析 → 匹配 → 决策 → 执行 → 复盘** 的完整闭环，帮助设备在遇到突发情况时自主选择最优最小损失规避方案，并持续迭代自身的危机处理能力。
+本技能包为低空经济场景下的无人设备（无人机、eVTOL、无人配送车等）提供突发危机应急响应能力。
+
+**v0.2.0 新增企业级能力**：除了设备端的实时危机响应（Phase 1-7），新增企业级数据采集、知识库管理、应急预案自动生成等能力（Phase 8-10），帮助运营企业从历史事件中持续学习，构建自己的应急响应体系。
+
+- **设备端**（Phase 1-7）：感知 → 记录 → 分析 → 匹配 → 决策 → 执行 → 复盘
+- **企业端**（Phase 8-10）：数据采集 → 知识库构建 → 预案生成 → 机队分析 → 合规输出
 
 **⚠️ ALPHA 阶段** — 本技能包处于概念验证阶段，不可用于真实飞行控制。仅作为危机决策辅助分析工具使用。
 
@@ -475,3 +480,300 @@ python3 scripts/crisis_engine.py --learn --feedback <feedback_file>
 - **可解释性**：每个决策必须有清晰的推理链路
 - **不可逆操作谨慎**：不可逆操作（如主动坠落）需更高置信度
 - **人命无价**：任何涉及人员安全的场景，零容忍风险
+
+---
+
+# 企业级能力（v0.2.0）
+
+> 以下 Phase 8-10 面向运营企业，帮助企业从设备端采集的事件数据中构建自己的应急响应知识体系，持续迭代和完善危机处理能力。
+
+---
+
+## Phase 8: 企业知识库构建与管理
+
+### 8.1 多源数据采集
+
+企业可从多个渠道向知识库注入数据：
+
+```bash
+python3 scripts/enterprise_kb_manager.py --ingest --source <source_type> --input <data>
+```
+
+支持的数据源：
+
+| 数据源 | 说明 | 格式 |
+|--------|------|------|
+| 设备事件日志 | 本系统 Phase 5 生成的事件报告 | `.guardian/incidents/*.json` |
+| 历史事故报告 | 企业历史积累的事故/险情记录 | CSV / JSON / 纯文本 |
+| 行业案例 | 公开的无人机事故调查报告 | PDF / 文本 |
+| 厂商公告 | 设备厂商发布的安全通告/召回通知 | 文本 |
+| 法规更新 | 监管机构发布的新规/修订 | 文本 |
+| 人工经验 | 飞手/运维人员的操作经验和教训 | 交互式录入 |
+
+### 8.2 知识库结构
+
+企业知识库采用分层结构存储于 `.guardian/enterprise_kb/`：
+
+```
+enterprise_kb/
+├── incidents/                 # 标准化事件库
+│   ├── by_type/              # 按危机类型索引
+│   ├── by_device/            # 按设备型号索引
+│   ├── by_region/            # 按运营区域索引
+│   └── by_severity/          # 按严重等级索引
+├── solutions/                 # 企业自定义解决方案
+│   ├── validated/            # 已验证方案（经实战检验）
+│   ├── draft/                # 草案方案（待验证）
+│   └── deprecated/           # 已废弃方案
+├── rules/                     # 企业自定义决策规则
+│   ├── thresholds.json       # 自定义告警阈值
+│   ├── escalation.json       # 自定义上报规则
+│   └── priority_override.json # 优先级调整（如载人场景）
+├── fleet/                     # 机队数据
+│   ├── device_registry.json  # 设备注册台账
+│   ├── maintenance_log.json  # 维护记录
+│   └── flight_history.json   # 飞行历史统计
+└── compliance/                # 合规资料
+    ├── regulations.json      # 适用法规清单
+    └── audit_trail/          # 审计日志
+```
+
+### 8.3 知识库操作
+
+```bash
+# 查看知识库概况
+python3 scripts/enterprise_kb_manager.py --status
+
+# 导入历史事件
+python3 scripts/enterprise_kb_manager.py --ingest --source incident_log --input events.csv
+
+# 导入行业案例
+python3 scripts/enterprise_kb_manager.py --ingest --source industry_case --input report.txt
+
+# 录入人工经验
+python3 scripts/enterprise_kb_manager.py --ingest --source manual_experience
+
+# 搜索知识库
+python3 scripts/enterprise_kb_manager.py --search --query "电机故障 大风"
+
+# 导出知识库
+python3 scripts/enterprise_kb_manager.py --export --format json --output kb_export.json
+```
+
+### 8.4 知识库健康度评估
+
+定期评估知识库的覆盖度和质量：
+
+```bash
+python3 scripts/enterprise_kb_manager.py --health-check
+```
+
+输出指标：
+- **覆盖度**：危机分类树中哪些类型已有解决方案，哪些为空白
+- **时效性**：方案最近更新时间，是否有过时方案
+- **验证度**：已验证 vs 未验证方案的比例
+- **冲突检测**：是否存在相互矛盾的方案或规则
+- **改进建议**：基于事件频率推荐优先补充的空白区域
+
+---
+
+## Phase 9: 企业应急预案自动生成
+
+### 9.1 预案生成引擎
+
+基于企业知识库自动生成定制化应急预案文档：
+
+```bash
+python3 scripts/emergency_plan_generator.py --generate \
+  --enterprise "XX物流无人机运营部" \
+  --scope "城市配送" \
+  --device-types "multirotor" \
+  --output-format markdown
+```
+
+### 9.2 预案内容框架
+
+生成的应急预案包含以下章节：
+
+```
+企业应急预案
+├── 1. 总则
+│   ├── 1.1 编制目的
+│   ├── 1.2 适用范围（设备类型、运营区域、业务场景）
+│   ├── 1.3 编制依据（法规、标准、企业规定）
+│   └── 1.4 预案体系层级
+├── 2. 组织架构与职责
+│   ├── 2.1 应急指挥部
+│   ├── 2.2 各级响应人员职责
+│   └── 2.3 外部联络清单（空管/消防/医疗/监管）
+├── 3. 风险识别与评估
+│   ├── 3.1 本企业历史事件统计分析  ← 从知识库自动生成
+│   ├── 3.2 高频风险类型排序
+│   ├── 3.3 运营区域风险地图
+│   └── 3.4 设备型号脆弱性分析
+├── 4. 分级响应程序
+│   ├── 4.1 L1-注意 响应流程
+│   ├── 4.2 L2-一般 响应流程
+│   ├── 4.3 L3-重大 响应流程
+│   ├── 4.4 L4-严重 响应流程
+│   └── 4.5 L5-灾难性 响应流程
+├── 5. 专项应急处置方案          ← 从知识库方案模板自动填充
+│   ├── 5.1 动力系统故障处置
+│   ├── 5.2 导航定位故障处置
+│   ├── 5.3 通信故障处置
+│   ├── 5.4 极端天气处置
+│   ├── 5.5 碰撞风险处置
+│   └── 5.6 复合故障处置
+├── 6. 事后处置
+│   ├── 6.1 现场保护与取证
+│   ├── 6.2 事件调查流程
+│   ├── 6.3 损失评估与理赔
+│   └── 6.4 整改措施与预防
+├── 7. 保障措施
+│   ├── 7.1 物资保障（备件/工具/应急设备）
+│   ├── 7.2 技术保障（监控系统/通信保障）
+│   ├── 7.3 培训与演练计划
+│   └── 7.4 经费保障
+└── 附录
+    ├── A. 应急联络通讯录
+    ├── B. 设备型号应急操作速查卡
+    ├── C. 应急处置检查清单（Checklist）
+    ├── D. 事件报告模板
+    └── E. 知识库更新记录
+```
+
+### 9.3 预案定制化要素
+
+预案生成时自动结合企业实际情况：
+
+- **设备型号匹配**：只包含企业实际使用的设备型号的处置方案
+- **地理区域适配**：根据运营区域的地形、气象、人口密度调整
+- **历史数据驱动**：高频故障排在前面，附历史统计图表
+- **法规合规**：自动匹配运营地的无人机管理法规要求
+- **企业定制规则**：融入企业自定义的阈值、上报链路、审批流程
+
+### 9.4 预案版本管理
+
+```bash
+# 查看预案历史版本
+python3 scripts/emergency_plan_generator.py --versions
+
+# 对比两个版本的差异
+python3 scripts/emergency_plan_generator.py --diff --v1 1.0 --v2 2.0
+
+# 标记为正式发布版
+python3 scripts/emergency_plan_generator.py --publish --version 2.0
+```
+
+每次知识库有重大更新时，自动提示企业更新应急预案。
+
+---
+
+## Phase 10: 机队数据分析与运营洞察
+
+### 10.1 机队事件统计
+
+对企业整个机队的事件数据进行多维度统计分析：
+
+```bash
+python3 scripts/fleet_analytics.py --report --period 2026-Q1
+```
+
+分析维度：
+
+| 维度 | 分析内容 |
+|------|---------|
+| **时间趋势** | 月度/季度事件数量变化、同比环比 |
+| **类型分布** | 各类危机的发生频次分布 |
+| **设备维度** | 哪些设备/型号事件率最高 |
+| **区域维度** | 哪些运营区域风险最高 |
+| **时段维度** | 高风险时段（季节/天气/时间段） |
+| **响应效果** | 平均响应时间、方案成功率 |
+| **损失统计** | 累计人员/财产/设备损失 |
+| **知识库效能** | 知识库匹配率、应急推理比例 |
+
+### 10.2 风险热力图
+
+基于历史事件生成空间风险热力图：
+
+```bash
+python3 scripts/fleet_analytics.py --heatmap --output risk_map.html
+```
+
+标注内容：
+- 历史事件发生点和密度
+- 高风险气象区域
+- 障碍物密集区
+- 信号盲区
+- 推荐和不推荐的航线
+
+### 10.3 设备健康评分
+
+为机队中每台设备计算健康评分：
+
+```bash
+python3 scripts/fleet_analytics.py --device-health
+```
+
+评分依据：
+- 历史故障次数和类型
+- 飞行时长和循环次数
+- 上次维护距今时间
+- 近期是否有异常趋势
+- 同型号设备的群体故障率
+
+输出：设备健康排名、维护优先级建议、预计需要维护的时间窗口。
+
+### 10.4 运营优化建议
+
+基于数据分析自动生成运营优化建议：
+
+- **航线优化**：避开高风险区域，推荐更安全的替代航线
+- **排班优化**：避免在高风险时段/天气条件下安排非紧急任务
+- **维护策略**：从定时维护转向基于状态的预测性维护
+- **培训重点**：针对高频故障类型安排专项培训
+- **采购建议**：基于故障率数据辅助设备采购决策
+
+### 10.5 监管合规报告
+
+自动生成符合监管要求的定期报告：
+
+```bash
+python3 scripts/fleet_analytics.py --compliance-report --standard CAAC --period 2026-Q1
+```
+
+支持的报告标准：
+- **CAAC（中国民航）**：无人机运营安全报告
+- **EASA（欧洲航空安全局）**：UAS 事件报告
+- **FAA（美国联邦航空局）**：Part 107 事件报告
+- **企业内部**：自定义报告模板
+
+---
+
+## 企业部署架构
+
+```
+                    ┌──────────────────────┐
+                    │   企业管理平台        │
+                    │  (Phase 8-10)        │
+                    │                      │
+                    │  ┌────────────────┐  │
+                    │  │ 知识库管理      │  │
+                    │  │ 预案生成        │  │
+                    │  │ 机队分析        │  │
+                    │  │ 合规报告        │  │
+                    │  └───────┬────────┘  │
+                    └──────────┼───────────┘
+                               │ 事件数据上报 & 知识库同步
+                    ┌──────────┼───────────┐
+                    │          │           │
+              ┌─────▼─────┐ ┌─▼────────┐ ┌▼──────────┐
+              │ 设备 A     │ │ 设备 B   │ │ 设备 C    │
+              │(Phase 1-7) │ │(Phase1-7)│ │(Phase1-7) │
+              │ 实时响应   │ │ 实时响应 │ │ 实时响应  │
+              └────────────┘ └──────────┘ └───────────┘
+```
+
+设备端与企业端形成双向闭环：
+- **上行**：设备端的事件数据、学习反馈上报到企业知识库
+- **下行**：企业知识库的更新方案、调整后的阈值下发到设备端

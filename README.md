@@ -3,10 +3,13 @@
 > 低空设备危机应急响应技能包 — OpenClaw / ClawHub Skill
 
 [![ClawHub](https://img.shields.io/badge/ClawHub-low--altitude--guardian-blue)](https://clawhub.com/skills/low-altitude-guardian)
+[![Version](https://img.shields.io/badge/version-0.2.0-brightgreen)]()
 [![Stage](https://img.shields.io/badge/stage-alpha-red)]()
 [![License](https://img.shields.io/badge/license-MIT-green)]()
 
 面向低空经济场景的无人设备（无人机、eVTOL、无人配送车等）突发危机应急响应技能包。通过 **感知 → 记录 → 分析 → 匹配 → 决策 → 执行 → 复盘** 的完整闭环，帮助设备在遇到突发情况时自主选择**最优最小损失**规避方案，并持续迭代自身的危机处理能力。
+
+**v0.2.0 新增**：支持企业级应用 — 帮助企业收集运营数据、构建专属知识库、自动生成定制化应急预案、进行机队数据分析与运营优化。
 
 ---
 
@@ -32,7 +35,21 @@
 
 **硬性否决规则**：人员安全评分 < 80 的方案**无条件淘汰**，无论总分多高。
 
-### 7 阶段闭环
+### 双层架构（v0.2.0）
+
+```
+┌─────────── 企业管理层 (v0.2.0) ──────────┐
+│  知识库管理 → 预案生成 → 机队分析         │
+│       ↑ 数据上传          ↓ 方案下发      │
+├──────────── 设备执行层 ─────────────────┤
+│  态势感知 → 危机分级 → 方案匹配 →        │
+│  执行监控 → 事件上报 → 自迭代学习        │
+└──────────────────────────────────────────┘
+```
+
+### 10 阶段闭环
+
+**设备端（Phase 1-7）**
 
 | 阶段 | 说明 | 脚本 |
 |------|------|------|
@@ -43,6 +60,14 @@
 | Phase 5 | 事件记录与分级上报 | `incident_reporter.py` |
 | Phase 6 | 知识库自迭代学习 | `crisis_engine.py --learn` |
 | Phase 7 | 特殊场景处理 | 完全失控 / 多机协同 / 法规合规 |
+
+**企业端（Phase 8-10，v0.2.0 新增）**
+
+| 阶段 | 说明 | 脚本 |
+|------|------|------|
+| Phase 8 | 企业知识库管理 | `enterprise_kb_manager.py` |
+| Phase 9 | 应急预案生成 | `emergency_plan_generator.py` |
+| Phase 10 | 机队数据分析 | `fleet_analytics.py` |
 
 ### 危机等级体系
 
@@ -74,7 +99,7 @@ clawhub install low-altitude-guardian
 git clone https://github.com/AAAlenwow/low-altitude-guardian.git
 ```
 
-### 运行演示
+### 设备端演示
 
 ```bash
 # 完整危机响应演示（单电机失效场景）
@@ -87,26 +112,46 @@ python3 scripts/incident_reporter.py --demo
 python3 scripts/decision_manager.py --list-templates
 ```
 
-### 完整流程使用
+### 企业端演示（v0.2.0 新增）
 
 ```bash
-# 1. 生成态势快照
-python3 scripts/situation_awareness.py --snapshot --trigger "左前电机异常振动"
+# 企业知识库管理
+python3 scripts/enterprise_kb_manager.py --demo          # 完整演示
+python3 scripts/enterprise_kb_manager.py --status         # 查看知识库状态
+python3 scripts/enterprise_kb_manager.py --health-check   # 健康度检查
+python3 scripts/enterprise_kb_manager.py --search "电机故障"  # 搜索知识库
 
-# 2. 危机分级
-python3 scripts/crisis_engine.py --classify --input snapshot.json
+# 应急预案生成
+python3 scripts/emergency_plan_generator.py --demo        # 生成示例预案
+python3 scripts/emergency_plan_generator.py --generate \
+  --company "顺丰低空物流运营部" \
+  --scope "城市无人机配送" \
+  --device-type multirotor                                # 自定义预案
 
-# 3. 方案匹配
-python3 scripts/decision_manager.py --match --input snapshot.json
+# 机队数据分析
+python3 scripts/fleet_analytics.py --demo                 # 完整分析演示
+python3 scripts/fleet_analytics.py --report               # 生成分析报告
+python3 scripts/fleet_analytics.py --device-health        # 设备健康评分
+python3 scripts/fleet_analytics.py --compliance-report    # 生成合规报告
+```
 
-# 4. 多方案对比
-python3 scripts/decision_manager.py --compare --input snapshot.json
+### 企业数据导入
 
-# 5. 生成事件报告
-python3 scripts/incident_reporter.py --generate-report --incident-id INC-xxx
+```bash
+# 从 CSV 批量导入历史事件（模板见 assets/enterprise_templates/）
+python3 scripts/enterprise_kb_manager.py --ingest \
+  --source incident_log \
+  --file data/history.csv
 
-# 6. 从反馈中学习
-python3 scripts/crisis_engine.py --learn --feedback feedback.json
+# 导入行业案例
+python3 scripts/enterprise_kb_manager.py --ingest \
+  --source industry_case \
+  --file cases/case_001.json
+
+# 导入厂商通告
+python3 scripts/enterprise_kb_manager.py --ingest \
+  --source vendor_bulletin \
+  --file bulletins/dji_safety_notice.json
 ```
 
 ---
@@ -129,19 +174,30 @@ python3 scripts/crisis_engine.py --learn --feedback feedback.json
 
 ```
 low-altitude-guardian/
-├── SKILL.md                           # 技能定义（ClawHub 入口）
+├── SKILL.md                                  # 技能定义（ClawHub 入口）
 ├── scripts/
-│   ├── crisis_engine.py               # 核心引擎（分级/匹配/监控/学习）
-│   ├── situation_awareness.py         # 态势感知
-│   ├── decision_manager.py            # 决策管理
-│   └── incident_reporter.py           # 事件记录与上报
+│   ├── crisis_engine.py                      # 核心引擎（分级/匹配/监控/学习）
+│   ├── situation_awareness.py                # 态势感知
+│   ├── decision_manager.py                   # 决策管理
+│   ├── incident_reporter.py                  # 事件记录与上报
+│   ├── enterprise_kb_manager.py              # [v0.2.0] 企业知识库管理
+│   ├── emergency_plan_generator.py           # [v0.2.0] 应急预案生成器
+│   └── fleet_analytics.py                    # [v0.2.0] 机队数据分析
 ├── assets/
-│   ├── solution_templates/            # 解决方案知识库（5个预置模板）
-│   └── device_profiles/               # 设备类型配置
+│   ├── solution_templates/                   # 解决方案知识库（5个预置模板）
+│   ├── device_profiles/                      # 设备类型配置
+│   └── enterprise_templates/                 # [v0.2.0] 企业导入模板
+│       ├── data_ingestion_csv_template.csv   #   CSV 数据导入模板
+│       ├── plan_config_template.json         #   预案配置模板
+│       └── kb_health_check_template.json     #   知识库健康检查配置
 ├── references/
-│   ├── crisis_taxonomy.md             # 危机分类学（6大类 30+ 子类）
-│   └── decision_priority_matrix.md    # 决策优先级矩阵
-└── tests/                             # 测试
+│   ├── crisis_taxonomy.md                    # 危机分类学（6大类 30+ 子类）
+│   └── decision_priority_matrix.md           # 决策优先级矩阵
+└── .guardian/                                # 运行时数据（自动生成，已 gitignore）
+    ├── enterprise_kb/                        #   企业知识库
+    ├── emergency_plans/                      #   生成的应急预案
+    ├── analytics_reports/                    #   分析报告
+    └── incidents/                            #   事件记录
 ```
 
 ---
@@ -172,6 +228,27 @@ low-altitude-guardian/
 - **保守决策** — 信息不完整时假设最坏情况
 - **可解释性** — 每个决策有清晰推理链路
 - **人命无价** — 涉及人员安全的场景零容忍风险
+
+---
+
+## 更新日志
+
+### v0.2.0 — 企业级功能
+
+- 新增 `enterprise_kb_manager.py`：多源数据采集、知识库构建与管理
+- 新增 `emergency_plan_generator.py`：基于知识库自动生成定制化应急预案
+- 新增 `fleet_analytics.py`：机队数据统计分析、设备健康评分、合规报告
+- 新增企业导入模板 `assets/enterprise_templates/`
+- 支持 6 种数据源导入（Guardian 事件、CSV 日志、行业案例、厂商通告、法规、人工经验）
+- 知识库健康度检查与优化建议
+- CAAC/EASA/FAA 多标准合规报告
+
+### v0.1.0 — 初始版本
+
+- 7 阶段设备端危机响应闭环
+- 5 个预置解决方案模板
+- 损失优先级加权决策引擎
+- L1-L5 危机分级与自适应人机协作
 
 ---
 
